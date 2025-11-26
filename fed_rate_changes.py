@@ -17,7 +17,7 @@ df = pd.read_csv(StringIO(res.text))
 df["observation_date"] = pd.to_datetime(df["observation_date"])
 
 # Restrict date range
-df = df[(df["observation_date"] >= "2020-01-01") & (df["observation_date"] <= "2024-12-31")]
+df = df[(df["observation_date"] >= "2020-01-01") & (df["observation_date"] <= "2022-12-31")]
 
 # Compute rate change (difference from previous day)
 df["rate_change"] = df["DFEDTARU"].diff()
@@ -37,7 +37,7 @@ def classify_change(x):
 df_changes["action"] = df_changes["rate_change"].apply(classify_change)
 
 # Save CSV
-output_path = "fed_rate_changes_2020_2024.csv"
+output_path = "fed_rate_changes_2020_2022.csv"
 df_changes.to_csv(output_path, index=False)
 
 print(f"Done! Saved rate change events to: {output_path}")
