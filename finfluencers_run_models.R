@@ -1,8 +1,8 @@
 # =======================================================
-# Step 0: Robust Package Installation & Loading
+# Step 0: Intelligent Package Installation & Loading
 # =======================================================
-# This section ensures all required packages are installed and loaded correctly.
-# It fixes the "function %>% not found" error.
+# This section ensures all required packages are installed and loaded.
+# It fixes common errors like "function %>% not found".
 
 packages_needed <- c("tidyverse", "fixest", "lubridate", "stargazer")
 
@@ -26,7 +26,7 @@ print("Setup complete. Starting analysis...")
 # Step 1: Read Data
 # =======================================================
 # Note: Ensure the file path is correct. 
-# In R, backslashes '\' must be replaced with forward slashes '/' or double backslashes '\\'.
+# Windows paths need forward slashes '/' or double backslashes '\\'.
 file_path <- "D:/zhannie/2025-2026 UCB MaCSS/fall course/advanced applied statistics/finfluencers-retail-trading-stats/final_merged_data.csv"
 
 # Read the CSV file
@@ -70,7 +70,7 @@ df_amzn <- df %>%
   rename_with(~ str_remove(., "amzn_"), starts_with("amzn")) %>%
   mutate(across(c(Open, High, Low, Close, Adj.Close, Volume, sofr, net_sentiment), clean_numeric_robust))
 
-# 5. Merge Dataframes into Panel Data format
+# 5. Merge Dataframes into Panel Data format (Wide to Long)
 panel_data <- bind_rows(df_aapl, df_amzn)
 
 # 6. Fill Missing Macro Values (Down-fill)
@@ -94,21 +94,25 @@ print(paste("Number of observations remaining after cleaning:", nrow(panel_data_
 
 if(nrow(panel_data_clean) > 0) {
   
-  # Define the Event Date (GameStop Short Squeeze Peak)
+  # Define the Event Date (GameStop Short Squeeze / Finfluencer Peak)
   cutoff_date <- as.Date("2021-01-28") 
   
-  # Create Dummy Variables
+  # --- Variables for Binary DiD (AAPL vs AMZN) ---
   # Post: 1 if date is on or after the event, 0 otherwise
   panel_data_clean$Post <- ifelse(panel_data_clean$date >= cutoff_date, 1, 0)
   
   # Treat: 1 if AAPL (Treatment Group), 0 if AMZN (Control Group)
   panel_data_clean$Treat <- ifelse(panel_data_clean$Ticker == "AAPL", 1, 0)
   
-  # DiD: Interaction term (Post * Treat) - This captures the Causal Effect
+  # Binary DiD Interaction: (Post * Treat)
   panel_data_clean$DiD <- panel_data_clean$Post * panel_data_clean$Treat
   
-  # Log-transform variables to normalize distribution
-  # Adding 1 to Volume to handle potential zeros (though rare in major stocks)
+  # --- Variables for Continuous DiD (Sentiment Based) ---
+  # Assumption: After the event, high sentiment drives volume more strongly.
+  # We do not strictly separate AAPL/AMZN, but use Sentiment intensity.
+  panel_data_clean$Continuous_DiD <- panel_data_clean$Post * panel_data_clean$net_sentiment
+  
+  # Log-transform variables (Standard practice for financial volume data)
   panel_data_clean$ln_Volume <- log(panel_data_clean$Volume + 1)
   panel_data_clean$ln_VIX <- log(panel_data_clean$vix_VIXCLS)
   
@@ -116,21 +120,28 @@ if(nrow(panel_data_clean) > 0) {
   # Step 4: Run Regression Models
   # =======================================================
   
-  # Model 1: OLS with Control Variables (No Fixed Effects)
-  # This shows the impact of macro variables explicitly.
+  # Model 1: Binary DiD - OLS with Control Variables
+  # Purpose: To see the explicit effect of macro variables like VIX and SOFR.
   did_model_ctrl <- feols(ln_Volume ~ DiD + Post + Treat + 
                             net_sentiment + ln_VIX + unemp_UNEMPLOY + sofr,
                           data = panel_data_clean,
                           vcov = "hetero")
   
-  # Model 2: Two-Way Fixed Effects (TWFE) - Recommended for Academic Papers
-  # Includes Ticker Fixed Effects (individual time-invariant characteristics)
-  # Includes Date Fixed Effects (absorbs all daily macro shocks like VIX, SOFR, etc.)
-  # Note: Macro vars (VIX, SOFR) will be dropped due to collinearity with Date FE.
+  # Model 2: Binary DiD - Two-Way Fixed Effects (TWFE)
+  # Purpose: Standard academic model. Controls for Ticker and Date fixed effects.
+  # Note: Macro variables (VIX, SOFR) are absorbed by Date Fixed Effects.
   did_model_twfe <- feols(ln_Volume ~ DiD + net_sentiment + ln_VIX + unemp_UNEMPLOY + sofr | 
                             Ticker + date, 
                           data = panel_data_clean,
                           vcov = "hetero")
+  
+  # Model 3: Continuous DiD (Advanced)
+  # Purpose: Resolves the issue that "AMZN might also be affected".
+  # Uses 'net_sentiment' as the treatment intensity.
+  did_model_continuous <- feols(ln_Volume ~ Continuous_DiD + net_sentiment | 
+                                  Ticker + date, 
+                                data = panel_data_clean,
+                                vcov = "hetero")
   
   # =======================================================
   # Step 5: Output Results
@@ -139,13 +150,12 @@ if(nrow(panel_data_clean) > 0) {
   print("--- Regression Results ---")
   
   # Display results in the console
-  print(etable(did_model_ctrl, did_model_twfe,
-               headers = c("With Controls (OLS)", "TWFE (Preferred)"),
+  # 'did_model_twfe' is the standard DiD result.
+  # 'did_model_continuous' is the robustness check result.
+  print(etable(did_model_ctrl, did_model_twfe, did_model_continuous,
+               headers = c("Binary DiD (OLS)", "Binary DiD (TWFE)", "Continuous DiD"),
                signif.code = c("***"=0.01, "**"=0.05, "*"=0.1),
                digits = 3))
-  
-  # Optional: Export to HTML file for Word/Reports
-  # stargazer(did_model_twfe, type = "html", out = "DiD_Results.html")
   
 } else {
   print("Error: The dataset is empty after cleaning. Please check source data.")
