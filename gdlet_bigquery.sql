@@ -2,41 +2,11 @@
 -- applying this sql query to gdelt-bq.gdeltv2.gkg table on Google BigQuery
 
 WITH ticker_keywords AS (
-  SELECT 'GME' AS ticker, 'gme' AS keyword UNION ALL
-  SELECT 'GME', 'gamestop' UNION ALL
+  SELECT 'AAPL' AS ticker, 'aapl' AS keyword UNION ALL
+  SELECT 'AAPL', 'apple' UNION ALL
 
-  SELECT 'AMC', 'amc' UNION ALL
-  SELECT 'AMC', 'amc entertainment' UNION ALL
-
-  SELECT 'HTZ', 'hertz' UNION ALL
-
-  SELECT 'HOOD', 'robinhood' UNION ALL
-
-  SELECT 'KOSS', 'koss' UNION ALL
-
-  SELECT 'BB', 'blackberry' UNION ALL
-  SELECT 'BB', 'bb' UNION ALL
-
-  SELECT 'NOK', 'nokia' UNION ALL
-
-  SELECT 'BBYQ', 'bed bath' UNION ALL
-  SELECT 'BBYQ', 'bed bath & beyond' UNION ALL
-
-  SELECT 'OPEN', 'opendoor' UNION ALL
-
-  SELECT 'KSS', 'kohls' UNION ALL
-
-  SELECT 'DNUT', 'krispy kreme' UNION ALL
-
-  SELECT 'RKLB', 'rocket lab' UNION ALL
-
-  SELECT 'CVNA', 'carvana' UNION ALL
-
-  SELECT 'SOUN', 'soundhound' UNION ALL
-
-  SELECT 'RIVN', 'rivian' UNION ALL
-
-  SELECT 'PLTR', 'palantir'
+  SELECT 'AMZN', 'amzn' UNION ALL
+  SELECT 'AMZN', 'amazon'
 ),
 
 base AS (
@@ -48,10 +18,12 @@ base AS (
   FROM
     `gdelt-bq.gdeltv2.gkg`
   WHERE
-    DATE BETWEEN 20200101000000 AND 20241231235959
+    DATE BETWEEN 20200101000000 AND 20221231235959
     AND DocumentIdentifier IS NOT NULL
-    AND NOT REGEXP_CONTAINS(LOWER(SourceCommonName),
-          r'(instagram|tiktok|youtube|reddit|twitter|x\.com)')
+    AND NOT REGEXP_CONTAINS(
+      LOWER(SourceCommonName),
+      r'(instagram|tiktok|youtube|reddit|twitter|x\.com)'
+    )
 ),
 
 matched AS (
