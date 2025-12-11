@@ -49,9 +49,10 @@ TSLA and AAPL have the lowest mean sentiment (~0.48), suggesting these stocks ex
 TSLA is the clear outlier in risk, with an average intraday range of 5.19%, significantly higher than the stable mega-caps (AAPL/AMZN).<br>
 
 ### 3. Regression Model Specification
-To account for the extreme heterogeneity observed above (e.g., FB's high buzz vs. NVDA's low buzz), we utilize Entity Fixed Effects ($ɑ_i$).
+To account for the extreme heterogeneity observed above... Entity Fixed Effects ($\alpha_i$).
+
 $$
-Log(Volume_{it}) = \alpha_i + \beta_1 Sentiment_{it-1} + \beta_2 Log(Social_{it-1}) + \beta_3 Market_{it-1} + \beta_4 Macro_t + \varepsilon_{it}
+\log(Volume_{it}) = \alpha_i + \beta_1 Sentiment_{it-1} + \beta_2 \log(Social_{it-1}) + \beta_3 Market_{it-1} + \beta_4 Macro_t + \varepsilon_{it}
 $$
 
 - Fixed Effects: Absorb the baseline differences (e.g., controlling for the fact that FB naturally has more posts than NVDA).
